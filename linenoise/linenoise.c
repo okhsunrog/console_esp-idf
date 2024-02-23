@@ -42,7 +42,7 @@
  * ------------------------------------------------------------------------
  *
  * References:
- * - http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+ * -http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
  * - http://www.3waylabs.com/nw/WWW/products/wizcon/vt220.html
  *
  * Todo list:
@@ -1273,6 +1273,7 @@ void linenoiseHistoryFree() {
         free(history);
     }
     history = NULL;
+    history_len = 0;
 }
 
 /* This is the API call to add a new entry in the linenoise history.
