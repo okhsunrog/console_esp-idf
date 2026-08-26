@@ -46,16 +46,20 @@ extern "C" {
 
 #include <stddef.h> /* For size_t. */
 #include <stdbool.h>
-// for semaphore
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 
 extern char *linenoiseEditMore;
-extern SemaphoreHandle_t stdout_taken_sem;
 
 /* The linenoiseState structure represents the state during line editing.
  * We pass this state to functions implementing specific editing
- * functionalities. */
+ * functionalities.
+ *
+ * When using the multiplexed API the caller owns this structure and must set
+ * buf, buflen, prompt and plen before calling linenoiseEditStart():
+ *  - buf/buflen: the edit buffer; buflen is never modified by linenoise and
+ *    the edited line is always NUL-terminated within it.
+ *  - prompt: may contain ANSI colour escape sequences.
+ *  - plen: the *printable* width of the prompt (excluding escape sequences);
+ *    used for cursor positioning. */
 struct linenoiseState {
     int in_completion;  /* The user pressed TAB and we are now in completion
                          * mode, so input is handled by completeLine(). */
@@ -63,31 +67,39 @@ struct linenoiseState {
     char *buf;          /* Edited line buffer. */
     size_t buflen;      /* Edited line buffer size. */
     const char *prompt; /* Prompt to display. */
-    size_t plen;        /* Prompt length. */
+    size_t plen;        /* Printable prompt length. */
     size_t pos;         /* Current cursor position. */
     size_t oldpos;      /* Previous refresh cursor position. */
     size_t len;         /* Current edited line length. */
     size_t cols;        /* Number of columns in terminal. */
-    size_t oldrows;     /* Rows used by last refrehsed line (multiline mode) */
+    size_t oldrows;     /* Rows used by last refreshed line (multiline mode) */
     int history_index;  /* The history index we are currently editing. */
 };
-
-
 
 typedef struct linenoiseCompletions {
   size_t len;
   char **cvec;
 } linenoiseCompletions;
 
-/* Non blocking API. */
+/* Initialisation. Creates the stdout lock; idempotent. Called automatically
+ * by esp_console_init() and by the editing entry points, so calling it
+ * explicitly is only needed if linenoiseOutputLock() is used before either. */
+void linenoiseInit(void);
+
+/* Output lock. Any task that wants to print while a line is being edited
+ * must hold this lock around linenoiseHide() ... its output ... linenoiseShow(). */
+void linenoiseOutputLock(void);
+void linenoiseOutputUnlock(void);
+
+/* Non blocking (multiplexed) API. */
 int linenoiseEditStart(struct linenoiseState *l);
 char *linenoiseEditFeed(struct linenoiseState *l);
 void linenoiseEditStop(struct linenoiseState *l);
 void linenoiseHide(struct linenoiseState *l);
 void linenoiseShow(struct linenoiseState *l);
 
-/* Blocking API. */
-char *linenoise(const char *prompt, struct linenoiseState **ls_to_pass);
+/* Blocking API. The prompt must not contain escape sequences. */
+char *linenoise(const char *prompt);
 void linenoiseFree(void *ptr);
 
 /* Completion API. */
@@ -104,20 +116,18 @@ int linenoiseHistoryAdd(const char *line);
 int linenoiseHistorySetMaxLen(int len);
 int linenoiseHistorySave(const char *filename);
 int linenoiseHistoryLoad(const char *filename);
-void linenoiseHistoryFree();
-
+void linenoiseHistoryFree(void);
 
 /* Other utilities. */
 void linenoiseClearScreen(void);
 void linenoiseSetMultiLine(int ml);
 void linenoiseSetDumbMode(int set);
 bool linenoiseIsDumbMode(void);
-int linenoiseProbe();
+int linenoiseProbe(void);
 void linenoiseMaskModeEnable(void);
 void linenoiseMaskModeDisable(void);
 int linenoiseSetMaxLineLen(size_t len);
 void flushWrite(void);
-
 
 #ifdef __cplusplus
 }

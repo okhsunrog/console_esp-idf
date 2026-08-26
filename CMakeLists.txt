@@ -1,8 +1,7 @@
 idf_build_get_property(target IDF_TARGET)
 
 if(${target} STREQUAL "linux")
-    return() # This component is currently not supported by the POSIX/Linux simulator, but we may support it in the
-             # future (TODO: IDF-8103)
+    return() # Not supported on the POSIX/Linux simulator: linenoise relies on FreeRTOS semaphores.
 endif()
 
 set(argtable_srcs argtable3/arg_cmd.c
@@ -20,12 +19,9 @@ set(argtable_srcs argtable3/arg_cmd.c
                   argtable3/arg_utils.c
                   argtable3/argtable3.c)
 
-
 idf_component_register(SRCS "commands.c"
-                            "esp_console_repl.c"
                             "split_argv.c"
                             "linenoise/linenoise.c"
                             ${argtable_srcs}
                     INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-                    REQUIRES vfs
-                    PRIV_REQUIRES driver esp_vfs_console)
+                    REQUIRES vfs)
